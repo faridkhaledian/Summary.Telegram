@@ -4,8 +4,6 @@ namespace Summary.Telegram.Services
     using System.Threading.Tasks;
     using Summary.Telegram.Settings;
     using TL;
-    using WTelegram;
-    using Microsoft.AspNetCore.Hosting;
 
     public interface IAuthorizeService
     {
@@ -15,28 +13,21 @@ namespace Summary.Telegram.Services
 
     public class AuthorizeService : IAuthorizeService
     {
-        private readonly Client _client;
         private readonly TelegramSettings _options;
+        private readonly ITelegramClientService _client;
 
         public AuthorizeService(IOptions<TelegramSettings> options,
-            IWebHostEnvironment environment)
+            ITelegramClientService client)
         {
             _options = options.Value;
-
-            _client = new Client(what => what switch
-            {
-                "api_id" => _options.Api_Id,
-                "api_hash" => _options.Api_Hash,
-                "session_pathname" => environment.ContentRootPath,
-                _ => null
-            });
+            _client = client;
         }
 
         public async Task SendCodeAsync()
         {
-            await _client.ConnectAsync();
+            var client = await _client.GetClientAsync();
 
-            await _client.Auth_SendCode(
+            await client.Auth_SendCode(
                 _options.Mobile,
                 int.Parse(_options.Api_Id),
                 _options.Api_Hash,
@@ -45,11 +36,11 @@ namespace Summary.Telegram.Services
 
         public async Task<bool> IsLoggedInAsync()
         {
-            await _client.ConnectAsync();
+            var client = await _client.GetClientAsync();
 
             try
             {
-                var users = await _client.Users_GetUsers(new InputUserBase[] { new InputUserSelf() });
+                var users = await client.Users_GetUsers(new InputUserBase[] { new InputUserSelf() });
                 return users.Length > 0;
             }
             catch (RpcException)

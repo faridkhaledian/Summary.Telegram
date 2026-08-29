@@ -1,17 +1,18 @@
 namespace Summary.Telegram.Settings
 {
-    using System.Threading.Tasks;
-    using Microsoft.AspNetCore.Authorization;
-    using Microsoft.AspNetCore.Http;
-    using Microsoft.Extensions.Logging;
-    using Microsoft.Extensions.Options;
     using Core.DisplayManagement.Entities;
     using Core.DisplayManagement.Handlers;
     using Core.DisplayManagement.Views;
     using Core.Entities;
     using Core.Environment.Shell;
     using Core.Settings;
+    using Core.Workflows;
+    using Microsoft.AspNetCore.Authorization;
+    using Microsoft.AspNetCore.Http;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.Extensions.Options;
     using Services;
+    using System.Threading.Tasks;
 
     public class TelegramSettings
     {
@@ -19,7 +20,6 @@ namespace Summary.Telegram.Settings
         public string Mobile { get; set; }
         public string Api_Id { get; set; }
         public string Api_Hash { get; set; }
-        public string Session_Path { get; set; }
     }
 
     public class TelegramSettingsDisplayDriver : SectionDisplayDriver<ISite,
@@ -29,26 +29,26 @@ namespace Summary.Telegram.Settings
         private readonly ShellSettings _shell;
         private readonly IHttpContextAccessor _httpAccessor;
         private readonly IAuthorizationService _authorize;
-        private readonly IAuthorizeService _authorizeService;
+        private readonly IAuthorizeService _auth;
 
         public TelegramSettingsDisplayDriver(IShellHost host,
             ShellSettings settings,
             IHttpContextAccessor httpContext,
             IAuthorizationService authorize,
-            IAuthorizeService authorizeService)
+            IAuthorizeService auth)
         {
             _host = host;
             _shell = settings;
             _httpAccessor = httpContext;
             _authorize = authorize;
-            _authorizeService = authorizeService;
+            _auth = auth;
         }
 
         public override async Task<IDisplayResult> EditAsync(TelegramSettings settings,
             BuildEditorContext context)
         {
             var user = _httpAccessor.HttpContext?.User;
-            if (user is null || !await _authorize.AuthorizeAsync(user, Permissions.ManageTelegramSettings))
+            if (user is null || !await _authorize.AuthorizeAsync(user, Permissions.ManageWorkflows))
             {
                 return null;
             }
@@ -59,7 +59,6 @@ namespace Summary.Telegram.Settings
                 model.Mobile = settings.Mobile;
                 model.Api_Id = settings.Api_Id;
                 model.Api_Hash = settings.Api_Hash;
-                model.Session_Path = settings.Session_Path;
             });
             return init.Location("Content:5").OnGroup("Telegram");
         }
@@ -68,7 +67,7 @@ namespace Summary.Telegram.Settings
             BuildEditorContext context)
         {
             var user = _httpAccessor.HttpContext?.User;
-            if (user is null || !await _authorize.AuthorizeAsync(user, Permissions.ManageTelegramSettings))
+            if (user is null || !await _authorize.AuthorizeAsync(user, Permissions.ManageWorkflows))
             {
                 return null;
             }
@@ -77,10 +76,9 @@ namespace Summary.Telegram.Settings
                 await context.Updater.TryUpdateModelAsync(settings, Prefix);
                 await _host.ReloadShellContextAsync(_shell);
 
-                if (!string.IsNullOrWhiteSpace(settings.Api_Hash) && !await _authorizeService.IsLoggedInAsync())
-                {
-                    await _authorizeService.SendCodeAsync();
-                }
+                if (string.IsNullOrWhiteSpace(settings.Api_Hash) is false)
+                    if (await _auth.IsLoggedInAsync() is false)
+                        await _auth.SendCodeAsync();
             }
 
             return await EditAsync(settings, context);
@@ -106,7 +104,6 @@ namespace Summary.Telegram.Settings
             options.Mobile = settings.Mobile;
             options.Api_Id = settings.Api_Id;
             options.Api_Hash = settings.Api_Hash;
-            options.Session_Path = settings.Session_Path;
         }
     }
 }
