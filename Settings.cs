@@ -11,29 +11,37 @@ namespace Summary.Telegram.Settings
     using Core.Entities;
     using Core.Environment.Shell;
     using Core.Settings;
+    using Services;
 
     public class TelegramSettings
     {
         public string Token { get; set; }
+        public string Mobile { get; set; }
+        public string Api_Id { get; set; }
+        public string Api_Hash { get; set; }
+        public string Session_Path { get; set; }
     }
 
-    public class TelegramSettingsDisplayDriver : SectionDisplayDriver<ISite, 
+    public class TelegramSettingsDisplayDriver : SectionDisplayDriver<ISite,
         TelegramSettings>
     {
         private readonly IShellHost _host;
         private readonly ShellSettings _shell;
         private readonly IHttpContextAccessor _httpAccessor;
         private readonly IAuthorizationService _authorize;
+        private readonly IAuthorizeService _authorizeService;
 
         public TelegramSettingsDisplayDriver(IShellHost host,
             ShellSettings settings,
             IHttpContextAccessor httpContext,
-            IAuthorizationService authorize)
+            IAuthorizationService authorize,
+            IAuthorizeService authorizeService)
         {
             _host = host;
             _shell = settings;
             _httpAccessor = httpContext;
             _authorize = authorize;
+            _authorizeService = authorizeService;
         }
 
         public override async Task<IDisplayResult> EditAsync(TelegramSettings settings,
@@ -48,6 +56,10 @@ namespace Summary.Telegram.Settings
             var init = Initialize<TelegramSettings>("TelegramSettings_Edit", model =>
             {
                 model.Token = settings.Token;
+                model.Mobile = settings.Mobile;
+                model.Api_Id = settings.Api_Id;
+                model.Api_Hash = settings.Api_Hash;
+                model.Session_Path = settings.Session_Path;
             });
             return init.Location("Content:5").OnGroup("Telegram");
         }
@@ -64,7 +76,13 @@ namespace Summary.Telegram.Settings
             {
                 await context.Updater.TryUpdateModelAsync(settings, Prefix);
                 await _host.ReloadShellContextAsync(_shell);
+
+                if (!string.IsNullOrWhiteSpace(settings.Api_Hash) && !await _authorizeService.IsLoggedInAsync())
+                {
+                    await _authorizeService.SendCodeAsync();
+                }
             }
+
             return await EditAsync(settings, context);
         }
     }
@@ -85,6 +103,10 @@ namespace Summary.Telegram.Settings
         {
             var settings = _site.GetSiteSettingsAsync().GetAwaiter().GetResult().As<TelegramSettings>();
             options.Token = settings.Token;
+            options.Mobile = settings.Mobile;
+            options.Api_Id = settings.Api_Id;
+            options.Api_Hash = settings.Api_Hash;
+            options.Session_Path = settings.Session_Path;
         }
     }
 }

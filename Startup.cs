@@ -8,12 +8,14 @@ namespace Summary.Telegram
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Options;
     using Summary.Telegram.Settings;
+    using Summary.Telegram.Services;
 
     [Feature(Telegram.Features.Telegram)]
     public class Startup : StartupBase
     {
         public override void ConfigureServices(IServiceCollection services)
         {
+            services.AddScoped<IAuthorizeService, AuthorizeService>();
             services.AddScoped<INavigationProvider, Menu>();
             services.AddScoped<IPermissionProvider, Permissions>();
             services.AddScoped<IDisplayDriver<ISite>, TelegramSettingsDisplayDriver>();
