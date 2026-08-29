@@ -5,6 +5,7 @@ namespace Summary.Telegram.Services
     using Summary.Telegram.Settings;
     using TL;
     using WTelegram;
+    using Microsoft.AspNetCore.Hosting;
 
     public interface IAuthorizeService
     {
@@ -17,7 +18,8 @@ namespace Summary.Telegram.Services
         private readonly Client _client;
         private readonly TelegramSettings _options;
 
-        public AuthorizeService(IOptions<TelegramSettings> options)
+        public AuthorizeService(IOptions<TelegramSettings> options,
+            IWebHostEnvironment environment)
         {
             _options = options.Value;
 
@@ -25,7 +27,7 @@ namespace Summary.Telegram.Services
             {
                 "api_id" => _options.Api_Id,
                 "api_hash" => _options.Api_Hash,
-                "session_pathname" => _options.Session_Path,
+                "session_pathname" => environment.ContentRootPath,
                 _ => null
             });
         }
